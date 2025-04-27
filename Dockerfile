@@ -28,4 +28,4 @@ RUN uv sync --group dev && \
 
 USER root
 WORKDIR /hubx/pages
-CMD ["jekyll", "serve", "--host", "127.0.0.1", "--port", "8080"]
+CMD ["jekyll", "serve", "--host", "0.0.0.0", "--port", "4000"]
