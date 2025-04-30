@@ -6,7 +6,7 @@ import logging
 import typing as t
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from typing import Literal, Optional
+from typing import Literal, Optional, TextIO
 
 import uvicorn
 from mcp import server, types
@@ -17,15 +17,23 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.routing import Mount, Route
-from starlette.types import AppType, Lifespan
+from starlette.types import Lifespan
 
+from mcpm.core.schema import ServerConfig
 from mcpm.monitor.base import AccessEventType
 from mcpm.monitor.event import trace_event
 from mcpm.profile.profile_config import ProfileConfigManager
-from mcpm.schemas.server_config import ServerConfig
-from mcpm.utils.config import PROMPT_SPLITOR, RESOURCE_SPLITOR, RESOURCE_TEMPLATE_SPLITOR, TOOL_SPLITOR
+from mcpm.utils.config import (
+    PROMPT_SPLITOR,
+    RESOURCE_SPLITOR,
+    RESOURCE_TEMPLATE_SPLITOR,
+    TOOL_SPLITOR,
+    ConfigManager,
+)
+from mcpm.utils.errlog_manager import ServerErrorLogManager
 
 from .client_connection import ServerConnection
+from .router_config import RouterConfig
 from .transport import RouterSseTransport
 from .watcher import ConfigWatcher
 
@@ -36,16 +44,33 @@ class MCPRouter:
     """
     A router that aggregates multiple MCP servers (SSE/STDIO) and
     exposes them as a single SSE server.
+
+    Example:
+        ```python
+        # Initialize with a custom API key
+        router = MCPRouter(router_config=RouterConfig(api_key="your-api-key"))
+
+        # Initialize with custom router configuration
+        router_config = RouterConfig(
+            api_key="your-api-key",
+            auth_enabled=True
+        )
+        router = MCPRouter(router_config=router_config)
+        ```
     """
 
-    def __init__(self, reload_server: bool = False, profile_path: str | None = None, strict: bool = False) -> None:
+    def __init__(
+        self,
+        reload_server: bool = False,
+        profile_path: str | None = None,
+        router_config: RouterConfig | None = None,
+    ) -> None:
         """
         Initialize the router.
 
         :param reload_server: Whether to reload the server when the config changes
         :param profile_path: Path to the profile file
-        :param strict: Whether to use strict mode for duplicated tool name.
-                       If True, raise error when duplicated tool name is found else auto resolve by adding server name prefix
+        :param router_config: Optional router configuration to use instead of the global config
         """
         self.server_sessions: t.Dict[str, ServerConnection] = {}
         self.capabilities_mapping: t.Dict[str, t.Dict[str, t.Any]] = defaultdict(dict)
@@ -59,7 +84,11 @@ class MCPRouter:
         self.watcher: Optional[ConfigWatcher] = None
         if reload_server:
             self.watcher = ConfigWatcher(self.profile_manager.profile_path)
-        self.strict: bool = strict
+        if router_config is None:
+            config = ConfigManager().get_router_config()
+            router_config = RouterConfig(api_key=config.get("api_key"), auth_enabled=config.get("auth_enabled", False))
+        self.router_config = router_config
+        self.error_log_manager = ServerErrorLogManager()
 
     def get_unique_servers(self) -> list[ServerConfig]:
         profiles = self.profile_manager.list_profiles()
@@ -110,11 +139,13 @@ class MCPRouter:
             raise ValueError(f"Server with ID {server_id} already exists")
 
         # Create client based on connection type
-        client = ServerConnection(server_config)
+        errlog: TextIO = self.error_log_manager.open_errlog_file(server_id)
+        client = ServerConnection(server_config, errlog=errlog)
 
         # Connect to the server
         await client.wait_for_initialization()
         if not client.healthy():
+            self.error_log_manager.close_errlog_file(server_id)
             raise ValueError(f"Failed to connect to server {server_id}")
 
         response = client.session_initialized_response
@@ -133,7 +164,7 @@ class MCPRouter:
                 # To make sure tool name is unique across all servers
                 tool_name = tool.name
                 if tool_name in self.capabilities_to_server_id["tools"]:
-                    if self.strict:
+                    if self.router_config.strict:
                         raise ValueError(
                             f"Tool {tool_name} already exists. Please use unique tool names across all servers."
                         )
@@ -149,7 +180,7 @@ class MCPRouter:
                 # To make sure prompt name is unique across all servers
                 prompt_name = prompt.name
                 if prompt_name in self.capabilities_to_server_id["prompts"]:
-                    if self.strict:
+                    if self.router_config.strict:
                         raise ValueError(
                             f"Prompt {prompt_name} already exists. Please use unique prompt names across all servers."
                         )
@@ -165,7 +196,7 @@ class MCPRouter:
                 # To make sure resource URI is unique across all servers
                 resource_uri = resource.uri
                 if str(resource_uri) in self.capabilities_to_server_id["resources"]:
-                    if self.strict:
+                    if self.router_config.strict:
                         raise ValueError(
                             f"Resource {resource_uri} already exists. Please use unique resource URIs across all servers."
                         )
@@ -182,14 +213,14 @@ class MCPRouter:
                             query=resource_uri.query,
                             fragment=resource_uri.fragment,
                         )
-                self.resources_mapping[str(resource_uri)] = resource
-                self.capabilities_to_server_id["resources"][str(resource_uri)] = server_id
+                    self.resources_mapping[str(resource_uri)] = resource
+                    self.capabilities_to_server_id["resources"][str(resource_uri)] = server_id
             resources_templates = await client.session.list_resource_templates()  # type: ignore
             for resource_template in resources_templates.resourceTemplates:
                 # To make sure resource template URI is unique across all servers
                 resource_template_uri_template = resource_template.uriTemplate
                 if resource_template_uri_template in self.capabilities_to_server_id["resource_templates"]:
-                    if self.strict:
+                    if self.router_config.strict:
                         raise ValueError(
                             f"Resource template {resource_template_uri_template} already exists. Please use unique resource template URIs across all servers."
                         )
@@ -198,8 +229,8 @@ class MCPRouter:
                         resource_template_uri_template = (
                             f"{server_id}{RESOURCE_TEMPLATE_SPLITOR}{resource_template.uriTemplate}"
                         )
-                self.resources_templates_mapping[resource_template_uri_template] = resource_template
-                self.capabilities_to_server_id["resource_templates"][resource_template_uri_template] = server_id
+                    self.resources_templates_mapping[resource_template_uri_template] = resource_template
+                    self.capabilities_to_server_id["resource_templates"][resource_template_uri_template] = server_id
 
     async def remove_server(self, server_id: str) -> None:
         """
@@ -218,6 +249,7 @@ class MCPRouter:
         # Remove the server from all collections
         del self.server_sessions[server_id]
         del self.capabilities_mapping[server_id]
+        self.error_log_manager.close_errlog_file(server_id)
 
         # Delete registered tools, resources and prompts
         for key in list(self.tools_mapping.keys()):
@@ -483,7 +515,7 @@ class MCPRouter:
 
     async def get_sse_server_app(
         self, allow_origins: t.Optional[t.List[str]] = None, include_lifespan: bool = True
-    ) -> AppType:
+    ) -> Starlette:
         """
         Get the SSE server app.
 
@@ -496,7 +528,9 @@ class MCPRouter:
         """
         await self.initialize_router()
 
-        sse = RouterSseTransport("/messages/")
+        # Pass the API key to the RouterSseTransport
+        api_key = None if not self.router_config.auth_enabled else self.router_config.api_key
+        sse = RouterSseTransport("/messages/", api_key=api_key)
 
         async def handle_sse(request: Request) -> None:
             async with sse.connect_sse(
@@ -510,11 +544,11 @@ class MCPRouter:
                     self.aggregated_server.initialization_options,
                 )
 
-        lifespan_handler: t.Optional[Lifespan[AppType]] = None
+        lifespan_handler: t.Optional[Lifespan[Starlette]] = None
         if include_lifespan:
 
             @asynccontextmanager
-            async def lifespan(app: AppType):
+            async def lifespan(app: Starlette):
                 yield
                 await self.shutdown()
 
@@ -573,5 +607,8 @@ class MCPRouter:
         for _, client in self.server_sessions.items():
             if client.healthy():
                 await client.request_for_shutdown()
+
+        # close all errlog files
+        self.error_log_manager.close_all()
 
         logger.info("all alive client sessions have been shut down")
