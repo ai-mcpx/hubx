@@ -2,28 +2,32 @@
 Utility functions for displaying MCP server configurations
 """
 
+import json
+
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
-from mcpm.core.schema import RemoteServerConfig, ServerConfig
+from mcpm.core.schema import CustomServerConfig, RemoteServerConfig, ServerConfig, STDIOServerConfig
 from mcpm.utils.scope import CLIENT_PREFIX, PROFILE_PREFIX
 
 console = Console()
 
 
-def print_server_config(server_config: ServerConfig, is_stashed=False):
+def print_server_config(server_config: ServerConfig, is_stashed=False, show_name=True):
     """Print detailed information about a server configuration.
 
     Args:
         server_config: Server configuration information
         is_stashed: Whether the server is stashed (affects display style)
+        show_name: Whether to show the server name (default True for backwards compatibility)
     """
     # Server name and command
-    if is_stashed:
-        console.print(f"[bold yellow]{server_config.name}[/] [dim](stashed)[/]")
-    else:
-        console.print(f"[bold cyan]{server_config.name}[/]")
+    if show_name:
+        if is_stashed:
+            console.print(f"[bold yellow]{server_config.name}[/] [dim](stashed)[/]")
+        else:
+            console.print(f"[bold cyan]{server_config.name}[/]")
 
     if isinstance(server_config, RemoteServerConfig):
         console.print(f"  Url: [green]{server_config.url}[/]")
@@ -34,6 +38,20 @@ def print_server_config(server_config: ServerConfig, is_stashed=False):
                 console.print(f'    [bold blue]{key}[/] = [green]"{value}"[/]')
         console.print("  " + "-" * 50)
         return
+    if isinstance(server_config, CustomServerConfig):
+        console.print("  Type: [green]Custom[/]")
+        console.print("  " + "-" * 50)
+        console.print("  Config:")
+        console.print(json.dumps(server_config.config, indent=2))
+        console.print("  " + "-" * 50)
+        return
+
+    # Handle STDIOServerConfig - all remaining configs should be STDIO
+    if not isinstance(server_config, STDIOServerConfig):
+        console.print("  Type: [red]Unknown server type[/]")
+        console.print("  " + "-" * 50)
+        return
+
     command = server_config.command
     console.print(f"  Command: [green]{command}[/]")
 
@@ -114,20 +132,20 @@ def print_error(message, details=None):
 
 def print_client_error():
     """Print a standardized client-related error message."""
-    console.print("[bold red]Error:[/] Unsupported active client")
-    console.print("Please switch to a supported client using 'mcpm client set <client-name>'")
+    console.print("[bold red]Error:[/] No supported MCP client found")
+    console.print("Please install a supported MCP client (Claude Desktop, Cursor, Windsurf, etc.)")
 
 
 def print_active_scope(scope: str):
-    """Display the active client or profile."""
+    """Display the working client or profile."""
     if scope.startswith(CLIENT_PREFIX):
-        console.print(f"[bold green]Working on Active Client:[/] {scope[1:]}\n")
+        console.print(f"[bold green]Using Client:[/] {scope[1:]}\n")
     elif scope.startswith(PROFILE_PREFIX):
-        console.print(f"[bold green]Working on Active Profile:[/] {scope[1:]}\n")
+        console.print(f"[bold green]Using Profile:[/] {scope[1:]}\n")
     else:
-        console.print(f"[bold red]Error:[/] Invalid active scope: {scope}\n")
+        console.print(f"[bold red]Error:[/] Invalid scope: {scope}\n")
 
 
 def print_no_active_scope():
-    console.print("[bold red]Error:[/] No active client or profile found.\n")
-    console.print("Please set an active target with 'mcpm target set @<client>' or 'mcpm target set %<profile>'.")
+    console.print("[bold red]Error:[/] No supported MCP client found.\n")
+    console.print("Please install a supported MCP client (Claude Desktop, Cursor, Windsurf, etc.).")

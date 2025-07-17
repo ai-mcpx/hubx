@@ -14,7 +14,6 @@ from pydantic import TypeAdapter
 from ruamel.yaml import YAML
 
 from mcpm.core.schema import ServerConfig, STDIOServerConfig
-from mcpm.utils.router_server import format_server_url
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +32,11 @@ class BaseClientManager(abc.ABC):
     download_url = ""  # URL to download the client
     config_path: str
 
-    def __init__(self):
+    def __init__(self, config_path_override: Optional[str] = None):
         """Initialize the client manager"""
         self._system = platform.system()
+        if config_path_override:
+            self.config_path = config_path_override
 
     @abc.abstractmethod
     def get_servers(self) -> Dict[str, Any]:
@@ -134,34 +135,6 @@ class BaseClientManager(abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
-    def activate_profile(self, profile_name: str, router_config: Dict[str, Any], alias_name: str | None = None) -> bool:
-        """
-        Activate a profile in the client config
-
-        Args:
-            profile_name: Name of the profile
-            router_config: Router configuration
-            alias_name: Alias name for the router in client config
-
-        Returns:
-            bool: Success or failure
-        """
-        pass
-
-    @abc.abstractmethod
-    def deactivate_profile(self, profile_name: str) -> bool:
-        """
-        Deactivate a profile in the client config
-
-        Args:
-            profile_name: Name of the profile
-
-        Returns:
-            bool: Success or failure
-        """
-        pass
-
     def get_associated_profiles(self) -> List[str]:
         """
         Get the associated profile for this client
@@ -198,9 +171,9 @@ class JSONClientManager(BaseClientManager):
 
     configure_key_name: str = "mcpServers"
 
-    def __init__(self):
+    def __init__(self, config_path_override: Optional[str] = None):
         """Initialize the JSON client manager"""
-        super().__init__()
+        super().__init__(config_path_override=config_path_override)
         self._config = None
 
     def _load_config(self) -> Dict[str, Any]:
@@ -213,7 +186,7 @@ class JSONClientManager(BaseClientManager):
         empty_config = {self.configure_key_name: {}}
 
         if not os.path.exists(self.config_path):
-            logger.warning(f"Client config file not found at: {self.config_path}")
+            logger.debug(f"Client config file not found at: {self.config_path}")
             return empty_config
 
         try:
@@ -405,38 +378,6 @@ class JSONClientManager(BaseClientManager):
         # Can be overridden by subclasses
         return os.path.isdir(os.path.dirname(self.config_path))
 
-    def activate_profile(self, profile_name: str, router_config: Dict[str, Any], alias_name: str | None = None) -> bool:
-        """Activate a profile in the client config
-
-        Args:
-            profile_name: Name of the profile
-            router_config: Router configuration
-            alias_name: Alias name for the router in client config
-
-        Returns:
-            bool: Success or failure
-        """
-        host = router_config["host"]
-        port = router_config["port"]
-        default_base_url = f"http://{host}:{port}/sse"
-
-        server_config = self._format_router_server(profile_name, default_base_url, alias_name)
-        return self.add_server(server_config)
-
-    def _format_router_server(self, profile_name, base_url, alias_name: str | None = None) -> ServerConfig:
-        return format_server_url(self.client_key, profile_name, base_url, alias_name)
-
-    def deactivate_profile(self, profile_name: str) -> bool:
-        """Deactivate a profile in the client config
-
-        Args:
-            profile_name: Name of the profile
-
-        Returns:
-            bool: Success or failure
-        """
-        return self.remove_server(profile_name)
-
 
 class YAMLClientManager(BaseClientManager):
     """
@@ -447,9 +388,9 @@ class YAMLClientManager(BaseClientManager):
     YAML-based client managers with varying configuration formats.
     """
 
-    def __init__(self):
+    def __init__(self, config_path_override: Optional[str] = None):
         """Initialize the YAML client manager"""
-        super().__init__()
+        super().__init__(config_path_override=config_path_override)
         self.yaml_handler: YAML = YAML()
 
     def _load_config(self) -> Dict[str, Any]:
@@ -462,7 +403,7 @@ class YAMLClientManager(BaseClientManager):
         empty_config = self._get_empty_config()
 
         if not os.path.exists(self.config_path):
-            logger.warning(f"Client config file not found at: {self.config_path}")
+            logger.debug(f"Client config file not found at: {self.config_path}")
             return empty_config
 
         try:
@@ -676,33 +617,3 @@ class YAMLClientManager(BaseClientManager):
         """
         # Check if the config directory exists
         return os.path.isdir(os.path.dirname(self.config_path))
-
-    def activate_profile(self, profile_name: str, router_config: Dict[str, Any], alias_name: str | None = None) -> bool:
-        """Activate a profile in the client config
-
-        Args:
-            profile_name: Name of the profile
-
-        Returns:
-            bool: Success or failure
-        """
-        host = router_config["host"]
-        port = router_config["port"]
-        default_base_url = f"http://{host}:{port}/sse"
-
-        server_config = self._format_router_server(profile_name, default_base_url, alias_name)
-        return self.add_server(server_config)
-
-    def _format_router_server(self, profile_name, base_url, server_name: str | None = None) -> ServerConfig:
-        return format_server_url(self.client_key, profile_name, base_url, server_name)
-
-    def deactivate_profile(self, profile_name: str) -> bool:
-        """Deactivate a profile in the client config
-
-        Args:
-            profile_name: Name of the profile
-
-        Returns:
-            bool: Success or failure
-        """
-        return self.remove_server(profile_name)

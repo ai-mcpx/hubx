@@ -1,3 +1,118 @@
+# [2.5.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v2.4.0...v2.5.0) (2025-07-14)
+
+
+### Features
+
+* trigger release for previous SSE support addition ([8131f8b](https://github.com/pathintegral-institute/mcpm.sh/commit/8131f8b9fb5d46000065a8e37ebffdd3ecd66179))
+
+# [2.4.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v2.3.0...v2.4.0) (2025-07-10)
+
+
+### Features
+
+* change mcpm edit arguments from CSV to space-separated format ([#213](https://github.com/pathintegral-institute/mcpm.sh/issues/213)) ([85a3492](https://github.com/pathintegral-institute/mcpm.sh/commit/85a3492bb7c13812e41415d6c0bf7b467e7a32f4)), closes [#212](https://github.com/pathintegral-institute/mcpm.sh/issues/212)
+
+# [2.3.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v2.2.0...v2.3.0) (2025-07-09)
+
+
+### Features
+
+* support more cli-client ([#210](https://github.com/pathintegral-institute/mcpm.sh/issues/210)) ([17ec81e](https://github.com/pathintegral-institute/mcpm.sh/commit/17ec81e05b94af482a39664ddb12208312433def))
+
+# [2.2.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v2.1.0...v2.2.0) (2025-07-09)
+
+
+### Features
+
+* refactor commands to v2 structure and add HTTP server support ([#211](https://github.com/pathintegral-institute/mcpm.sh/issues/211)) ([6ebca95](https://github.com/pathintegral-institute/mcpm.sh/commit/6ebca959e631309f6f61db55e87bf8582f44d648))
+
+# [2.1.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v2.0.0...v2.1.0) (2025-07-07)
+
+
+### Features
+
+* improve GitHub issue templates ([942689e](https://github.com/pathintegral-institute/mcpm.sh/commit/942689ee85e2ea72fc55e7eb8b077c50086029da))
+
+# [2.0.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.14.2...v2.0.0) (2025-07-07)
+
+
+* feat!: release MCPM v2.0 with major architectural changes ([c86ec16](https://github.com/pathintegral-institute/mcpm.sh/commit/c86ec1668b554477522b7d68648e48555aa1a912))
+
+
+### BREAKING CHANGES
+
+* MCPM v2.0 introduces a completely new architecture that
+  eliminates the target-based system in favor of a simplified global
+  configuration model with virtual profiles.
+
+  Major changes:
+  - Removed target-based commands (mcpm target, mcpm stash, mcpm pop, etc.)
+  - Replaced with global server management (mcpm install/uninstall)
+  - Virtual profiles replace separate profile configurations
+  - Direct server execution replaces router daemon
+  - New client integration commands (mcpm client edit/import)
+  - FastMCP-based sharing instead of router sharing
+  - Automatic v1 to v2 migration with user confirmation
+
+  This release requires migration from v1 configurations and changes
+  command syntax. See MIGRATION_GUIDE.md for complete migration instructions.
+
+## [1.14.2](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.14.1...v1.14.2) (2025-07-01)
+
+
+### Bug Fixes
+
+* automated fix for [#190](https://github.com/pathintegral-institute/mcpm.sh/issues/190) via Codex ([#192](https://github.com/pathintegral-institute/mcpm.sh/issues/192)) ([42ebf9b](https://github.com/pathintegral-institute/mcpm.sh/commit/42ebf9bb1dc8b2fe0eade70182e084bd89681069))
+
+## [1.14.1](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.14.0...v1.14.1) (2025-06-30)
+
+
+### Bug Fixes
+
+* outdated error message instructions ([#196](https://github.com/pathintegral-institute/mcpm.sh/issues/196)) ([49c9be1](https://github.com/pathintegral-institute/mcpm.sh/commit/49c9be170bffca0a7fbf08a8b4f5381c5a95e7a2))
+
+# [1.14.0](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.6...v1.14.0) (2025-06-24)
+
+
+### Features
+
+* support custom node runtime config ([#186](https://github.com/pathintegral-institute/mcpm.sh/issues/186)) ([3c77974](https://github.com/pathintegral-institute/mcpm.sh/commit/3c7797481c311cfdb16b3add82455a0f07ab838d))
+
+## [1.13.6](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.5...v1.13.6) (2025-06-24)
+
+
+### Bug Fixes
+
+* compatible with goose builtin config ([#185](https://github.com/pathintegral-institute/mcpm.sh/issues/185)) ([8485c1b](https://github.com/pathintegral-institute/mcpm.sh/commit/8485c1b423659eacadebc131a38268d8d6de00de))
+
+## [1.13.5](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.4...v1.13.5) (2025-06-16)
+
+
+### Bug Fixes
+
+* automated fix for [#171](https://github.com/pathintegral-institute/mcpm.sh/issues/171) via Codex ([#173](https://github.com/pathintegral-institute/mcpm.sh/issues/173)) ([88b554b](https://github.com/pathintegral-institute/mcpm.sh/commit/88b554b1d057a470cb44efc0cf26a98941291f35))
+
+## [1.13.4](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.3...v1.13.4) (2025-06-07)
+
+
+### Bug Fixes
+
+* npx path in windows is npx.cmd ([#169](https://github.com/pathintegral-institute/mcpm.sh/issues/169)) ([9dc8746](https://github.com/pathintegral-institute/mcpm.sh/commit/9dc874644a309fb297a310188ce7ad1e753bb67b))
+
+## [1.13.3](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.2...v1.13.3) (2025-06-05)
+
+
+### Bug Fixes
+
+* remove stdout stream handling for share ([#167](https://github.com/pathintegral-institute/mcpm.sh/issues/167)) ([11fddcc](https://github.com/pathintegral-institute/mcpm.sh/commit/11fddcc1ce68e96105cd33f1050f3dd0814ce9e0))
+
+## [1.13.2](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.1...v1.13.2) (2025-06-05)
+
+
+### Bug Fixes
+
+* trigger semantic release for Windows compatibility fix ([16b5e44](https://github.com/pathintegral-institute/mcpm.sh/commit/16b5e44f01c34422c8f8c72528b781cd5f908e44))
+
 ## [1.13.1](https://github.com/pathintegral-institute/mcpm.sh/compare/v1.13.0...v1.13.1) (2025-05-29)
 
 

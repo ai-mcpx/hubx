@@ -2,11 +2,11 @@
 Info command for MCPM - Show detailed information about a specific MCP server
 """
 
-import click
 from rich.console import Console
 
 from mcpm.utils.display import print_error
 from mcpm.utils.repository import RepositoryManager
+from mcpm.utils.rich_click_config import click
 
 console = Console()
 repo_manager = RepositoryManager()
@@ -52,6 +52,7 @@ def _display_server_info(server):
     description = server.get("description", "No description")
     license_info = server.get("license", "Unknown")
     is_official = server.get("is_official", False)
+    is_archived = server.get("is_archived", False)
 
     # Get author info
     author_info = server.get("author", {})
@@ -83,6 +84,8 @@ def _display_server_info(server):
     console.print(f"Author: {author_name}" + (f" ({author_email})" if author_email else ""))
     console.print(f"License: {license_info}")
     console.print(f"Official: {is_official}")
+    if is_archived:
+        console.print(f"Archived: {is_archived}")
     console.print("")
 
     # URLs section

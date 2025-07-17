@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/modelcontextprotocol/servers"
   },
-  "homepage": "https://github.com/modelcontextprotocol/servers/blob/main/src/gitlab",
+  "homepage": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/gitlab",
   "author": {
     "name": "modelcontextprotocol"
   },
@@ -366,5 +366,6 @@
     }
   ],
   "is_official": true,
+  "is_archived": true,
   "docker_url": "https://hub.docker.com/r/mcp/gitlab"
 }
